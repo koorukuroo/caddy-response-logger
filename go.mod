@@ -1,4 +1,4 @@
-module github.com/kyunghoon/caddy-response-logger
+module github.com/koorukuroo/caddy-response-logger
 
 go 1.20
 
