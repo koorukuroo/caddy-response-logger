@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,60 @@ import (
 
 func init() {
 	caddy.RegisterModule(ResponseLogger{})
+}
+
+// parseSize parses a size string (e.g., "1MB", "512KB", "2GB") and returns the size in bytes
+func parseSize(sizeStr string) (int, error) {
+	if sizeStr == "" {
+		return 0, fmt.Errorf("empty size string")
+	}
+
+	// Convert to uppercase for case-insensitive matching
+	sizeStr = strings.ToUpper(strings.TrimSpace(sizeStr))
+
+	// Handle just numeric values (assume bytes)
+	if val, err := strconv.Atoi(sizeStr); err == nil {
+		return val, nil
+	}
+
+	// Extract number and unit
+	var num string
+	var unit string
+	
+	for i, char := range sizeStr {
+		if char >= '0' && char <= '9' || char == '.' {
+			num += string(char)
+		} else {
+			unit = sizeStr[i:]
+			break
+		}
+	}
+
+	if num == "" {
+		return 0, fmt.Errorf("no numeric value found in size string: %s", sizeStr)
+	}
+
+	// Parse the numeric part
+	val, err := strconv.ParseFloat(num, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid numeric value: %s", num)
+	}
+
+	// Convert based on unit
+	switch unit {
+	case "B", "":
+		return int(val), nil
+	case "KB":
+		return int(val * 1024), nil
+	case "MB":
+		return int(val * 1024 * 1024), nil
+	case "GB":
+		return int(val * 1024 * 1024 * 1024), nil
+	case "TB":
+		return int(val * 1024 * 1024 * 1024 * 1024), nil
+	default:
+		return 0, fmt.Errorf("unknown unit: %s", unit)
+	}
 }
 
 // ResponseLogger implements an HTTP middleware that logs response details
@@ -225,7 +280,7 @@ func (rl *ResponseLogger) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 					return d.ArgErr()
 				}
 				var err error
-				rl.MaxBodySize, err = caddy.ParseSize(sizeStr)
+				rl.MaxBodySize, err = parseSize(sizeStr)
 				if err != nil {
 					return d.Errf("invalid size: %v", err)
 				}
