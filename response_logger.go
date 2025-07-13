@@ -11,12 +11,14 @@ import (
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
+	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"go.uber.org/zap"
 )
 
 func init() {
 	caddy.RegisterModule(ResponseLogger{})
+	httpcaddyfile.RegisterHandlerDirective("response_logger", parseCaddyfile)
 }
 
 // parseSize parses a size string (e.g., "1MB", "512KB", "2GB") and returns the size in bytes
@@ -71,6 +73,19 @@ func parseSize(sizeStr string) (int, error) {
 	default:
 		return 0, fmt.Errorf("unknown unit: %s", unit)
 	}
+}
+
+// parseCaddyfile parses the Caddyfile configuration for response_logger
+func parseCaddyfile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
+	var rl ResponseLogger
+	
+	// Parse the Caddyfile configuration
+	err := rl.UnmarshalCaddyfile(h.Dispenser)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &rl, nil
 }
 
 // ResponseLogger implements an HTTP middleware that logs response details
