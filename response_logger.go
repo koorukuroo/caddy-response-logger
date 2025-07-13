@@ -2,7 +2,6 @@ package response_logger
 
 import (
     "bytes"
-    "io"
     "log"
     "net/http"
 
