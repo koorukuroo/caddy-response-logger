@@ -1,52 +1,49 @@
 package response_logger
 
 import (
-    "bytes"
-    "log"
-    "net/http"
+	"bytes"
+	"log"
+	"net/http"
 
-    "github.com/caddyserver/caddy/v2"
-    "github.com/caddyserver/caddy/v2/modules/caddyhttp"
+	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
+	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 )
 
 func init() {
-    caddy.RegisterModule(ResponseLogger{})
+	caddy.RegisterModule(ResponseLogger{})
+	caddy.RegisterHandlerDirective("response_logger", parseCaddyfile)
 }
 
+// ResponseLogger is a simple middleware that logs the response body.
 type ResponseLogger struct{}
 
 func (ResponseLogger) CaddyModule() caddy.ModuleInfo {
-    return caddy.ModuleInfo{
-        ID:  "http.handlers.response_logger",
-        New: func() caddy.Module { return new(ResponseLogger) },
-    }
-}
-
-type bodyCaptureWriter struct {
-    http.ResponseWriter
-    statusCode int
-    body       bytes.Buffer
-}
-
-func (w *bodyCaptureWriter) WriteHeader(statusCode int) {
-    w.statusCode = statusCode
-    w.ResponseWriter.WriteHeader(statusCode)
-}
-
-func (w *bodyCaptureWriter) Write(b []byte) (int, error) {
-    w.body.Write(b) // 바디 복사
-    return w.ResponseWriter.Write(b)
+	return caddy.ModuleInfo{
+		ID:  "http.handlers.response_logger",
+		New: func() caddy.Module { return new(ResponseLogger) },
+	}
 }
 
 func (h ResponseLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-    bw := &bodyCaptureWriter{ResponseWriter: w, statusCode: 200}
+	// Create a response recorder to capture status and body
+	rec := caddyhttp.NewResponseRecorder(w, nil, nil)
+	buf := new(bytes.Buffer)
+	rec.BufferWriter = buf
 
-    err := next.ServeHTTP(bw, r)
-    if err != nil {
-        return err
-    }
+	// Serve the next handler
+	err := next.ServeHTTP(rec, r)
+	if err != nil {
+		return err
+	}
 
-    log.Printf("[ResponseLogger] %s %s -> %d\nBody:\n%s\n", r.Method, r.URL.Path, bw.statusCode, bw.body.String())
+	// Log the status and body
+	log.Printf("[response_logger] %s %s -> %d\nBody:\n%s\n", r.Method, r.URL.Path, rec.Status(), buf.String())
 
-    return nil
+	return nil
+}
+
+// parseCaddyfile makes response_logger usable in Caddyfile.
+func parseCaddyfile(d *caddyfile.Dispenser) (caddyhttp.MiddlewareHandler, error) {
+	return ResponseLogger{}, nil
 }
