@@ -1,0 +1,12 @@
+:8080 {
+    route {
+        response_logger {
+            log_level info
+            include_response_body
+            max_body_size 1KB
+            include_headers User-Agent Content-Type
+        }
+        
+        respond "Hello from response_logger directive! 🎉"
+    }
+} 
