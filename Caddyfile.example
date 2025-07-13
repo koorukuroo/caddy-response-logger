@@ -1,0 +1,84 @@
+# Caddy v2 Response Logger 예제 설정
+# 사용하려면 파일명을 Caddyfile로 변경하세요
+
+# 기본 설정 - 단순한 로깅
+:8080 {
+    response_logger
+    
+    respond "Hello World! 기본 로깅이 활성화되었습니다."
+}
+
+# 고급 설정 - API 서버용
+:8081 {
+    response_logger {
+        logger_name api_server
+        log_level debug
+        include_request_body
+        include_response_body
+        max_body_size 1MB
+        include_headers Authorization Content-Type X-Request-ID
+    }
+    
+    # API 라우트 예제
+    route /api/* {
+        respond "API 응답: 요청이 성공적으로 처리되었습니다."
+    }
+    
+    # 정적 파일 서빙
+    root * /var/www/html
+    file_server
+}
+
+# 프로덕션 환경 설정
+:8082 {
+    response_logger {
+        logger_name production
+        log_level info
+        # 성공 응답과 리다이렉트는 로깅 제외
+        skip_status_codes 200 301 302 304
+        # 헬스체크와 메트릭스는 로깅 제외
+        skip_paths /health /metrics /favicon.ico
+        # 필요한 헤더만 로깅
+        include_headers X-Real-IP X-Forwarded-For User-Agent
+    }
+    
+    # 헬스체크 엔드포인트
+    handle /health {
+        respond "OK"
+    }
+    
+    # 메트릭스 엔드포인트
+    handle /metrics {
+        respond "metrics data"
+    }
+    
+    # 메인 애플리케이션
+    handle {
+        respond "프로덕션 애플리케이션"
+    }
+}
+
+# 에러 로깅 전용 설정
+:8083 {
+    response_logger {
+        logger_name error_only
+        log_level error
+        # 에러 상태코드만 로깅
+        skip_status_codes 200 201 202 204 301 302 304
+        include_response_body
+        max_body_size 512KB
+    }
+    
+    # 에러 응답 테스트
+    route /error {
+        respond "Internal Server Error" 500
+    }
+    
+    route /notfound {
+        respond "Not Found" 404
+    }
+    
+    handle {
+        respond "정상 응답"
+    }
+} 
