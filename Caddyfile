@@ -1,0 +1,13 @@
+:8080 {
+    handle {
+        response_logger {
+            logger_name test_logger
+            log_level debug
+            include_response_body
+            max_body_size 1MB
+            include_headers User-Agent Content-Type
+        }
+        
+        respond "Hello World! 응답 로거 테스트입니다. 현재 시간: {{now}}"
+    }
+} 
