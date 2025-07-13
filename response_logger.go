@@ -2,6 +2,7 @@ package response_logger
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -243,7 +244,10 @@ func (rl *ResponseLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next
 		if len(body) > rl.MaxBodySize {
 			body = body[:rl.MaxBodySize]
 		}
-		fields = append(fields, zap.ByteString("response_body", body))
+		
+		// Base64 encode the response body to preserve binary data (e.g., gzip compressed)
+		encoded := base64.StdEncoding.EncodeToString(body)
+		fields = append(fields, zap.String("response_body_b64", encoded))
 	}
 	
 	// Log based on level and status code
